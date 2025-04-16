@@ -207,7 +207,7 @@ public class LifeSteal : BasePlugin
             {
                 if (player.Pawn.Value!.Health <= mHealth)
                 {
-                    //Do nothing.
+
                 }
                 else
                 {

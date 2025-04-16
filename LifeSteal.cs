@@ -20,17 +20,28 @@ public class LifeSteal : BasePlugin
 
     private readonly HashSet<ulong> TargetedPlayers = new();
     private int mHealth = int.MaxValue;
+    private int hDrain = 1;
     private string _configPath => Path.Combine(ModuleDirectory, "lifesteal_config.cfg");
+    private string _configPathDrain => Path.Combine(ModuleDirectory, "drain_config.cfg");
 
     public override void Load(bool hotReload)
     {
         Console.WriteLine("Life Steal engaged!");
         LoadConfig();
+        LoadDrainConfig();
 
         AddTimer(1.0f, () => hurtPlayer(), TimerFlags.REPEAT);
         AddCommand("ls", "LifeSteal command", healthDrain);
         AddCommand("mh", "Changes max health", maxH);
+        AddCommand("hp", "Changes health drain", hP);
         RegisterEventHandler<EventPlayerHurt>(playerHurt);
+    }
+
+    public override void Unload(bool hotReload)
+    {
+        Console.WriteLine("Life Steal de-engaged!");
+        SaveConfig();
+        SaveDrainConfig();
     }
 
     private void LoadConfig()
@@ -52,11 +63,39 @@ public class LifeSteal : BasePlugin
         catch { }
     }
 
+    private void LoadDrainConfig()
+    {
+        if (!File.Exists(_configPathDrain))
+        {
+            File.WriteAllText(_configPathDrain, hDrain.ToString());
+            return;
+        }
+
+        try
+        {
+            string content = File.ReadAllText(_configPathDrain);
+            if (int.TryParse(content, out int loadedValue))
+            {
+                hDrain = loadedValue;
+            }
+        }
+        catch { }
+    }
+
     private void SaveConfig()
     {
         try
         {
             File.WriteAllText(_configPath, mHealth.ToString());
+        }
+        catch { }
+    }
+
+    private void SaveDrainConfig()
+    {
+        try
+        {
+            File.WriteAllText(_configPathDrain, hDrain.ToString());
         }
         catch { }
     }
@@ -98,10 +137,20 @@ public class LifeSteal : BasePlugin
     [RequiresPermissions("@css/generic")]
     private void healthDrain(CCSPlayerController? sender, CommandInfo command)
     {
+        /*if (command.ArgCount < 2)
+        {
+            sender?.PrintToChat("Usage: !ls <list/@ct/@t/playername>");
+            return;
+        }*/
+
         if (command.ArgCount < 2)
         {
-            sender?.PrintToChat("Usage: !ls <@ct/@t/playername>");
-            return;
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Valid usage:");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       list: List all players that have LifeSteal enables.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       *: Enables/Disables LifeSteal for Everyone");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       @ct: Enables/Disables LifeSteal for Counter-Terrorists");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       @t: Enables/Disables LifeSteal for Terrorists");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       <player-name>: Enables/Disables LifeSteal for provided player.");
         }
 
         string arg = command.ArgString.Trim().ToLower();
@@ -114,12 +163,12 @@ public class LifeSteal : BasePlugin
                 if (!TargetedPlayers.Contains(player.SteamID))
                 {
                     TargetedPlayers.Add(player.SteamID);
-                    sender?.PrintToChat($"{player.PlayerName} now has LifeSteal enabled");
+                    sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} {player.PlayerName} now has LifeSteal {ChatColors.Green}enabled");
                 }
                 else
                 {
                     TargetedPlayers.Remove(player.SteamID);
-                    sender?.PrintToChat($"{player.PlayerName} now has LifeSteal disabled.");
+                    sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} {player.PlayerName} now has LifeSteal {ChatColors.Red}disabled.");
                 }
         }
         else if (arg == "@t")
@@ -128,12 +177,12 @@ public class LifeSteal : BasePlugin
                 if (!TargetedPlayers.Contains(player.SteamID))
                 {
                     TargetedPlayers.Add(player.SteamID);
-                    sender?.PrintToChat($"{player.PlayerName} now has LifeSteal enabled");
+                    sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} {player.PlayerName} now has LifeSteal {ChatColors.Green}enabled");
                 }
                 else
                 {
                     TargetedPlayers.Remove(player.SteamID);
-                    sender?.PrintToChat($"{player.PlayerName} now has LifeSteal disabled.");
+                    sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} {player.PlayerName} now has LifeSteal {ChatColors.Red}disabled.");
                 }
 
         }
@@ -143,65 +192,90 @@ public class LifeSteal : BasePlugin
                 if (!TargetedPlayers.Contains(player.SteamID))
                 {
                     TargetedPlayers.Add(player.SteamID);
-                    sender?.PrintToChat($"{player.PlayerName} now has LifeSteal enabled");
+                    sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} {player.PlayerName} now has LifeSteal {ChatColors.Green}enabled");
                 }
                 else
                 {
                     TargetedPlayers.Remove(player.SteamID);
-                    sender?.PrintToChat($"{player.PlayerName} now has LifeSteal disabled.");
+                    sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} {player.PlayerName} now has LifeSteal {ChatColors.Red}disabled.");
                 }
         }
+        else if (arg == "list")
+        {
+            foreach (var player in players)
+                if (TargetedPlayers.Contains(player.SteamID))
+                {
+                    sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White}       {player.PlayerName}");
+                }
+        }
+
         else
         {
-            var target = players.FirstOrDefault(p => p.PlayerName.ToLower().Contains(arg));
-            if (target != null)
-            {
-                if (!TargetedPlayers.Contains(target.SteamID))
-                {
-                    TargetedPlayers.Add(target.SteamID);
-                    sender?.PrintToChat($"{target.PlayerName} now has LifeSteal enabled");
-                }
-                else
-                {
-                    TargetedPlayers.Remove(target.SteamID);
-                    sender?.PrintToChat($"{target.PlayerName} now has LifeSteal disabled.");
-                }
-            }
-            else
-            {
-                sender?.PrintToChat("No player found with that name.");
-            }
+                    var target = players.FirstOrDefault(p => p.PlayerName.ToLower().Contains(arg));
+                    if (target != null)
+                    {
+                        if (!TargetedPlayers.Contains(target.SteamID))
+                        {
+                            TargetedPlayers.Add(target.SteamID);
+                            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} {target.PlayerName} now has LifeSteal {ChatColors.Green}enabled");
+                        }
+                        else
+                        {
+                            TargetedPlayers.Remove(target.SteamID);
+                            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} {target.PlayerName} now has LifeSteal {ChatColors.Red}disabled.");
+                        }
+                    }
+
+                    else
+                    {
+                        sender?.PrintToChat($"No player found with that name.");
+                    }
+                
+            
         }
     }
 
     [RequiresPermissions("@css/generic")]
     private void maxH(CCSPlayerController? sender, CommandInfo command)
     {
+        /*if (command.ArgCount < 2)
+        {
+            sender?.PrintToChat("Usage: !mh <value/number/infinite>");
+            return;
+        }*/
         if (command.ArgCount < 2)
         {
-            sender?.PrintToChat("Usage: !mh <number/infinite>");
-            return;
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Valid usage:");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       value: Lists the current max health.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       infinite: Sets max health to infinity.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       <number>: Sets max health to given number.");
         }
 
         string arg = command.ArgString.Trim().ToLower();
 
         var players = Utilities.GetPlayers()
             .Where(p => p.IsValid && p.Connected == PlayerConnectedState.PlayerConnected);
+
+        if (arg == "value")
+        {
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White}      {mHealth}");
+        }
+
         if (arg == "infinite")
         {
             mHealth = int.MaxValue;
-            sender?.PrintToChat("The max health is now infinite.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} The max health is now {ChatColors.Green}infinite.");
         }
         else
         {
             if (!int.TryParse(arg, out int parsedHealth) || parsedHealth <= 0)
             {
-                sender?.PrintToChat("Invalid health value.");
+                //sender?.PrintToChat("Invalid health value.");
                 return;
             }
 
             mHealth = parsedHealth;
-            sender?.PrintToChat($"The max health is now {mHealth}.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} The max health is now {ChatColors.Green}{mHealth}.");
 
             foreach (var player in players)
             {
@@ -217,6 +291,51 @@ public class LifeSteal : BasePlugin
         }
     }
 
+    [RequiresPermissions("@css/generic")]
+    private void hP(CCSPlayerController? sender, CommandInfo command)
+    {
+        /*if (command.ArgCount < 2)
+        {
+            sender?.PrintToChat("Usage: !hp <value/number/default>");
+            return;
+        }*/
+
+        if (command.ArgCount < 2)
+        {
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Valid usage:");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       value: Lists the current health drain per second..");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       default: Sets health drain per second to default (1).");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       <number>: Sets health drain per second to given number.");
+        }
+
+        string arg = command.ArgString.Trim().ToLower();
+
+        var players = Utilities.GetPlayers()
+            .Where(p => p.IsValid && p.Connected == PlayerConnectedState.PlayerConnected);
+
+        if (arg == "value")
+        {
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White}       {hDrain}");
+        }
+
+        if (arg == "default")
+        {
+            hDrain = 1;
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} The health drain per second is now {ChatColors.Green}default.");
+        }
+        else
+        {
+            if (!int.TryParse(arg, out int parsedHealth) || parsedHealth <= 0)
+            {
+                //sender?.PrintToChat("Invalid value.");
+                return;
+            }
+
+            hDrain = parsedHealth;
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} The health drain per second is now {ChatColors.Green}{hDrain}.");
+        }
+    }
+
     private void hurtPlayer()
     {
         foreach (var player in Utilities.GetPlayers())
@@ -228,7 +347,7 @@ public class LifeSteal : BasePlugin
                 {
                     if (!TargetedPlayers.Contains(player.SteamID))
                         continue;
-                    player.Pawn.Value!.Health -= 1;
+                    player.Pawn.Value!.Health -= hDrain;
                     if (player.Pawn.Value!.Health <= 0)
                     {
                         player.CommitSuicide(true, true);

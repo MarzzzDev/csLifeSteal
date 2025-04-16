@@ -24,11 +24,11 @@ public class LifeSteal : BasePlugin
 
     public override void Load(bool hotReload)
     {
-        Console.WriteLine("Health Drain + Life Steal engaged!");
+        Console.WriteLine("Life Steal engaged!");
         LoadConfig();
 
         AddTimer(1.0f, () => hurtPlayer(), TimerFlags.REPEAT);
-        AddCommand("hd", "Health drain command", healthDrain);
+        AddCommand("ls", "LifeSteal command", healthDrain);
         AddCommand("mh", "Changes max health", maxH);
         RegisterEventHandler<EventPlayerHurt>(playerHurt);
     }
@@ -100,7 +100,7 @@ public class LifeSteal : BasePlugin
     {
         if (command.ArgCount < 2)
         {
-            sender?.PrintToChat("Usage: !hd <@ct/@t/playername>");
+            sender?.PrintToChat("Usage: !ls <@ct/@t/playername>");
             return;
         }
 
@@ -114,12 +114,12 @@ public class LifeSteal : BasePlugin
                 if (!TargetedPlayers.Contains(player.SteamID))
                 {
                     TargetedPlayers.Add(player.SteamID);
-                    sender?.PrintToChat($"{player.PlayerName} will now receive health drain.");
+                    sender?.PrintToChat($"{player.PlayerName} now has LifeSteal enabled");
                 }
                 else
                 {
                     TargetedPlayers.Remove(player.SteamID);
-                    sender?.PrintToChat($"{player.PlayerName} will no longer receive health drain.");
+                    sender?.PrintToChat($"{player.PlayerName} now has LifeSteal disabled.");
                 }
         }
         else if (arg == "@t")
@@ -128,12 +128,12 @@ public class LifeSteal : BasePlugin
                 if (!TargetedPlayers.Contains(player.SteamID))
                 {
                     TargetedPlayers.Add(player.SteamID);
-                    sender?.PrintToChat($"{player.PlayerName} will now receive health drain.");
+                    sender?.PrintToChat($"{player.PlayerName} now has LifeSteal enabled");
                 }
                 else
                 {
                     TargetedPlayers.Remove(player.SteamID);
-                    sender?.PrintToChat($"{player.PlayerName} will no longer receive health drain.");
+                    sender?.PrintToChat($"{player.PlayerName} now has LifeSteal disabled.");
                 }
 
         }
@@ -143,12 +143,12 @@ public class LifeSteal : BasePlugin
                 if (!TargetedPlayers.Contains(player.SteamID))
                 {
                     TargetedPlayers.Add(player.SteamID);
-                    sender?.PrintToChat($"{player.PlayerName} will now receive health drain.");
+                    sender?.PrintToChat($"{player.PlayerName} now has LifeSteal enabled");
                 }
                 else
                 {
                     TargetedPlayers.Remove(player.SteamID);
-                    sender?.PrintToChat($"{player.PlayerName} will no longer receive health drain.");
+                    sender?.PrintToChat($"{player.PlayerName} now has LifeSteal disabled.");
                 }
         }
         else
@@ -159,12 +159,12 @@ public class LifeSteal : BasePlugin
                 if (!TargetedPlayers.Contains(target.SteamID))
                 {
                     TargetedPlayers.Add(target.SteamID);
-                    sender?.PrintToChat($"{target.PlayerName} will now receive health drain.");
+                    sender?.PrintToChat($"{target.PlayerName} now has LifeSteal enabled");
                 }
                 else
                 {
                     TargetedPlayers.Remove(target.SteamID);
-                    sender?.PrintToChat($"{target.PlayerName} will no longer receive health drain.");
+                    sender?.PrintToChat($"{target.PlayerName} now has LifeSteal disabled.");
                 }
             }
             else
@@ -196,7 +196,7 @@ public class LifeSteal : BasePlugin
         {
             if (!int.TryParse(arg, out int parsedHealth) || parsedHealth <= 0)
             {
-                sender?.PrintToChat("Invalid health value. Please enter a positive number.");
+                sender?.PrintToChat("Invalid health value.");
                 return;
             }
 

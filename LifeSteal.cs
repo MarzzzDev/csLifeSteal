@@ -7,6 +7,8 @@ using CounterStrikeSharp.API.Core.Attributes;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Utils;
 using CounterStrikeSharp.API.Modules.Events;
+using CounterStrikeSharp.API.Modules.Permissions;
+using CounterStrikeSharp.API.Modules.Entities;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -136,6 +138,7 @@ public class LifeSteal : BasePlugin
     [RequiresPermissions("@css/generic")]
     private void healthDrain(CCSPlayerController? sender, CommandInfo command)
     {
+
         string arg = command.ArgString.Trim().ToLower();
 
         var players = Utilities.GetPlayers()
@@ -307,7 +310,6 @@ public class LifeSteal : BasePlugin
         {
             if (!int.TryParse(arg, out int parsedHealth) || parsedHealth <= 0)
             {
-                //sender?.PrintToChat("Invalid value.");
                 return;
             }
 

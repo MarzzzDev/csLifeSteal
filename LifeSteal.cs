@@ -39,7 +39,6 @@ public class LifeSteal : BasePlugin
 
     public override void Unload(bool hotReload)
     {
-        Console.WriteLine("Life Steal de-engaged!");
         SaveConfig();
         SaveDrainConfig();
     }
@@ -137,27 +136,20 @@ public class LifeSteal : BasePlugin
     [RequiresPermissions("@css/generic")]
     private void healthDrain(CCSPlayerController? sender, CommandInfo command)
     {
-        /*if (command.ArgCount < 2)
-        {
-            sender?.PrintToChat("Usage: !ls <list/@ct/@t/playername>");
-            return;
-        }*/
+        string arg = command.ArgString.Trim().ToLower();
 
+        var players = Utilities.GetPlayers()
+            .Where(p => p.IsValid && p.Connected == PlayerConnectedState.PlayerConnected);
         if (command.ArgCount < 2)
         {
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Valid usage:");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       list: List all players that have LifeSteal enables.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       list: List all players that have LifeSteal enabled.");
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       *: Enables/Disables LifeSteal for Everyone");
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       @ct: Enables/Disables LifeSteal for Counter-Terrorists");
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       @t: Enables/Disables LifeSteal for Terrorists");
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       <player-name>: Enables/Disables LifeSteal for provided player.");
         }
-
-        string arg = command.ArgString.Trim().ToLower();
-
-        var players = Utilities.GetPlayers()
-            .Where(p => p.IsValid && p.Connected == PlayerConnectedState.PlayerConnected);
-        if (arg == "@ct")
+        else if (arg == "@ct")
         {
             foreach (var player in players.Where(p => p.TeamNum == 3))
                 if (!TargetedPlayers.Contains(player.SteamID))
@@ -228,7 +220,7 @@ public class LifeSteal : BasePlugin
 
                     else
                     {
-                        sender?.PrintToChat($"No player found with that name.");
+                        sender?.PrintToChat($" {ChatColors.Red}[LifeSteal] No player found with that name.");
                     }
                 
             
@@ -238,11 +230,6 @@ public class LifeSteal : BasePlugin
     [RequiresPermissions("@css/generic")]
     private void maxH(CCSPlayerController? sender, CommandInfo command)
     {
-        /*if (command.ArgCount < 2)
-        {
-            sender?.PrintToChat("Usage: !mh <value/number/infinite>");
-            return;
-        }*/
         if (command.ArgCount < 2)
         {
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Valid usage:");
@@ -250,6 +237,8 @@ public class LifeSteal : BasePlugin
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       infinite: Sets max health to infinity.");
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       <number>: Sets max health to given number.");
         }
+
+        sender!.PrintToCenter("hawk");
 
         string arg = command.ArgString.Trim().ToLower();
 
@@ -270,7 +259,6 @@ public class LifeSteal : BasePlugin
         {
             if (!int.TryParse(arg, out int parsedHealth) || parsedHealth <= 0)
             {
-                //sender?.PrintToChat("Invalid health value.");
                 return;
             }
 
@@ -294,12 +282,6 @@ public class LifeSteal : BasePlugin
     [RequiresPermissions("@css/generic")]
     private void hP(CCSPlayerController? sender, CommandInfo command)
     {
-        /*if (command.ArgCount < 2)
-        {
-            sender?.PrintToChat("Usage: !hp <value/number/default>");
-            return;
-        }*/
-
         if (command.ArgCount < 2)
         {
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Valid usage:");

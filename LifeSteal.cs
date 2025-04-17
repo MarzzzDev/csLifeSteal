@@ -238,8 +238,6 @@ public class LifeSteal : BasePlugin
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       <number>: Sets max health to given number.");
         }
 
-        sender!.PrintToCenter("hawk");
-
         string arg = command.ArgString.Trim().ToLower();
 
         var players = Utilities.GetPlayers()

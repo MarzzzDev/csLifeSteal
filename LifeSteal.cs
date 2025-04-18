@@ -23,7 +23,8 @@ public class LifeSteal : BasePlugin
     private int hDrain = 1;
     private string _configPath => Path.Combine(ModuleDirectory, "lifesteal_config.cfg");
     private string _configPathDrain => Path.Combine(ModuleDirectory, "drain_config.cfg");
-
+    private readonly Dictionary<CCSPlayerController, float> msgTimer = new();
+    private readonly Dictionary<CCSPlayerController, string> dmgMsg = new();
     public override void Load(bool hotReload)
     {
         Console.WriteLine("Life Steal engaged!");
@@ -35,6 +36,7 @@ public class LifeSteal : BasePlugin
         AddCommand("mh", "Changes max health", maxH);
         AddCommand("hp", "Changes health drain", hP);
         RegisterEventHandler<EventPlayerHurt>(playerHurt);
+        RegisterListener<Listeners.OnTick>(OnTick);
     }
 
     public override void Unload(bool hotReload)
@@ -98,6 +100,41 @@ public class LifeSteal : BasePlugin
         }
         catch { }
     }
+    
+
+    private void OnTick()
+    {
+        foreach (var player in Utilities.GetPlayers())
+        {
+            if (player == null || !player.IsValid || !player.PawnIsAlive)
+                continue;
+
+            if (msgTimer.TryGetValue(player, out float timer) && timer > 0f)
+            {
+                timer -= Server.TickInterval;
+                if (timer < 0f)
+                    timer = 0f;
+
+                msgTimer[player] = timer;
+
+                if (dmgMsg.TryGetValue(player, out var msg))
+                {
+                    player.PrintToCenterHtml($"{msg}");
+
+                }
+            }
+        }
+    }
+
+
+    public void StartPlayerMsgTimer(CCSPlayerController player, float duration, string message)
+    {
+        if (player == null || !player.IsValid)
+            return;
+
+        msgTimer[player] = duration;
+        dmgMsg[player] = message;
+    }
 
     public HookResult playerHurt(EventPlayerHurt @event, GameEventInfo info)
     {
@@ -119,10 +156,18 @@ public class LifeSteal : BasePlugin
                         if (newHealth <= mHealth)
                         {
                             playerController.Pawn.Value.Health = newHealth;
+                            StartPlayerMsgTimer(playerController, 2.5f, $"""
+                            <font size='32' color='#fc4040'>[LifeSteal]</font><br>
+                            <font size='28'><font color='#b82000'>+{damageAmount}</font> <font color='#dadada'>HP Gained</font></font>
+                            """);
                         }
                         else
                         {
                             playerController.Pawn.Value.Health = mHealth;
+                            StartPlayerMsgTimer(playerController, 2.5f, """
+                            <font size='32' color='#fc4040'>[LifeSteal]</font><br>
+                            <font size='28'><font color='#b82000'>MAXIMUM</font> <font color='#dadada'>HP Reached</font></font>
+                            """);
                         }
                         Utilities.SetStateChanged(playerController.Pawn.Value, "CBaseEntity", "m_iHealth");
                     });

@@ -7,6 +7,8 @@ using CounterStrikeSharp.API.Core.Attributes;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Utils;
 using CounterStrikeSharp.API.Modules.Events;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -25,9 +27,27 @@ public class LifeSteal : BasePlugin
     private string _configPathDrain => Path.Combine(ModuleDirectory, "drain_config.cfg");
     private readonly Dictionary<CCSPlayerController, float> msgTimer = new();
     private readonly Dictionary<CCSPlayerController, string> dmgMsg = new();
+    public static Dictionary<string, string> Messages = new();
+    private static string _filePath = string.Empty;
+    private static Dictionary<string, string> GetDefaultMessages()
+    {
+        return new Dictionary<string, string>
+        {
+            {
+                "LifeStealGained",
+                "<font size='32' color='#fc4040'>[LifeSteal]</font><br><font size='28'><font color='#b82000'>+{0}</font> <font color='#dadada'>HP Gained</font></font>"
+            },
+            {
+                "LifeStealMax",
+                "<font size='32' color='#fc4040'>[LifeSteal]</font><br><font size='28'><font color='#b82000'>MAXIMUM</font> <font color='#dadada'>HP Reached</font></font>"
+            }
+        };
+    }
     public override void Load(bool hotReload)
     {
         Console.WriteLine("Life Steal engaged!");
+        LoadMessages(Path.Combine(ModuleDirectory, "lifesteal_messages.json"));
+        SaveMessages();
         LoadConfig();
         LoadDrainConfig();
 
@@ -43,6 +63,39 @@ public class LifeSteal : BasePlugin
     {
         SaveConfig();
         SaveDrainConfig();
+    }
+
+    public static void LoadMessages(string filePath)
+    {
+        _filePath = filePath;
+
+        if (!File.Exists(filePath))
+        {
+            Console.WriteLine($"File not found, creating default: {filePath}");
+            Messages = GetDefaultMessages();
+            SaveMessages();
+            return;
+        }
+
+        var json = File.ReadAllText(filePath);
+        Messages = JsonSerializer.Deserialize<Dictionary<string, string>>(json)
+                   ?? GetDefaultMessages();
+
+        Console.WriteLine($"Loaded {Messages.Count} messages from {filePath}");
+    }
+
+    public static void SaveMessages()
+    {
+        if (string.IsNullOrEmpty(_filePath))
+            return;
+
+        var json = JsonSerializer.Serialize(Messages, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
+        File.WriteAllText(_filePath, json);
+        Console.WriteLine($"Saved messages to {_filePath}");
     }
 
     private void LoadConfig()
@@ -156,20 +209,24 @@ public class LifeSteal : BasePlugin
                         if (newHealth <= mHealth)
                         {
                             playerController.Pawn.Value.Health = newHealth;
-                            StartPlayerMsgTimer(playerController, 2.5f, $"""
-                            <font size='32' color='#fc4040'>[LifeSteal]</font><br>
-                            <font size='28'><font color='#b82000'>+{damageAmount}</font> <font color='#dadada'>HP Gained</font></font>
-                            """);
+
+                            string msg = string.Format(
+                                Messages["LifeStealGained"],
+                                damageAmount
+                            );
+
+                            StartPlayerMsgTimer(playerController, 1f, msg);
                         }
                         else
                         {
                             playerController.Pawn.Value.Health = mHealth;
-                            StartPlayerMsgTimer(playerController, 2.5f, """
-                            <font size='32' color='#fc4040'>[LifeSteal]</font><br>
-                            <font size='28'><font color='#b82000'>MAXIMUM</font> <font color='#dadada'>HP Reached</font></font>
-                            """);
+
+                            string msg = Messages["LifeStealMax"];
+                            StartPlayerMsgTimer(playerController, 1f, msg);
                         }
+
                         Utilities.SetStateChanged(playerController.Pawn.Value, "CBaseEntity", "m_iHealth");
+
                     });
                 }
             }

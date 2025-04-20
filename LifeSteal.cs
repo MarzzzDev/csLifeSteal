@@ -23,10 +23,13 @@ public class LifeSteal : BasePlugin
     private readonly HashSet<ulong> TargetedPlayers = new();
     private int mHealth = int.MaxValue;
     private int hDrain = 1;
+    private int keepHealth = 0;
     private string _configPath => Path.Combine(ModuleDirectory, "lifesteal_config.cfg");
     private string _configPathDrain => Path.Combine(ModuleDirectory, "drain_config.cfg");
+    private string _cfgKeepHealth => Path.Combine(ModuleDirectory, "keep_health.cfg");
     private readonly Dictionary<CCSPlayerController, float> msgTimer = new();
     private readonly Dictionary<CCSPlayerController, string> dmgMsg = new();
+    private readonly Dictionary<CCSPlayerController, int> finishHealth = new();
     public static Dictionary<string, string> Messages = new();
     private static string _filePath = string.Empty;
     private static Dictionary<string, string> GetDefaultMessages()
@@ -50,12 +53,17 @@ public class LifeSteal : BasePlugin
         SaveMessages();
         LoadConfig();
         LoadDrainConfig();
+        loadKeepHealth();
 
         AddTimer(1.0f, () => hurtPlayer(), TimerFlags.REPEAT);
         AddCommand("ls", "LifeSteal command", healthDrain);
         AddCommand("mh", "Changes max health", maxH);
         AddCommand("hp", "Changes health drain", hP);
+        AddCommand("lshelp", "Tells all commands about the plugin.", hP);
+        AddCommand("kh", "Enables/Disables keeping health on round end.", hP);
         RegisterEventHandler<EventPlayerHurt>(playerHurt);
+        RegisterEventHandler<EventRoundStart>(roundStart);
+        RegisterEventHandler<EventRoundEnd>(roundEnd);
         RegisterListener<Listeners.OnTick>(OnTick);
     }
 
@@ -63,6 +71,7 @@ public class LifeSteal : BasePlugin
     {
         SaveConfig();
         SaveDrainConfig();
+        saveKeepHealth();
     }
 
     public static void LoadMessages(string filePath)
@@ -153,7 +162,35 @@ public class LifeSteal : BasePlugin
         }
         catch { }
     }
-    
+
+    private void loadKeepHealth()
+    {
+        if (!File.Exists(_cfgKeepHealth))
+        {
+            File.WriteAllText(_cfgKeepHealth, keepHealth.ToString());
+            return;
+        }
+
+        try
+        {
+            string content = File.ReadAllText(_cfgKeepHealth);
+            if (int.TryParse(content, out int loadedValue))
+            {
+                keepHealth = loadedValue;
+            }
+        }
+        catch { }
+    }
+
+    private void saveKeepHealth()
+    {
+        try
+        {
+            File.WriteAllText(_cfgKeepHealth, keepHealth.ToString());
+        }
+        catch { }
+    }
+
 
     private void OnTick()
     {
@@ -231,6 +268,32 @@ public class LifeSteal : BasePlugin
                 }
             }
         }
+
+        return HookResult.Continue;
+    }
+
+    public HookResult roundStart(EventRoundStart @event, GameEventInfo info)
+    {
+        var players = Utilities.GetPlayers()
+            .Where(p => p.IsValid && p.Connected == PlayerConnectedState.PlayerConnected);
+        foreach (var player in players)
+            if (keepHealth == 1) {
+                finishHealth[player] = player.Pawn.Value!.Health;
+                if (finishHealth[player]! > 100)
+                {
+                    player.Pawn.Value!.Health = finishHealth[player];
+                }
+            }
+
+        return HookResult.Continue;
+    }
+
+    public HookResult roundEnd(EventRoundEnd @event, GameEventInfo info)
+    {
+        var players = Utilities.GetPlayers()
+            .Where(p => p.IsValid && p.Connected == PlayerConnectedState.PlayerConnected);
+        foreach (var player in players)
+            finishHealth[player] = player.Pawn.Value!.Health;
 
         return HookResult.Continue;
     }
@@ -386,7 +449,8 @@ public class LifeSteal : BasePlugin
         if (command.ArgCount < 2)
         {
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Valid usage:");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       value: Lists the current health drain per second..");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       value: Lists the current health drain per second.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       disable: Disables health drain");
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       default: Sets health drain per second to default (1).");
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       <number>: Sets health drain per second to given number.");
         }
@@ -395,7 +459,11 @@ public class LifeSteal : BasePlugin
 
         var players = Utilities.GetPlayers()
             .Where(p => p.IsValid && p.Connected == PlayerConnectedState.PlayerConnected);
-
+        if (arg == "disable")
+        {
+            hDrain = 0;
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Health drain is now {ChatColors.Red}disabled.");
+        }
         if (arg == "value")
         {
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White}       {hDrain}");
@@ -418,6 +486,66 @@ public class LifeSteal : BasePlugin
         }
     }
 
+
+    [RequiresPermissions("@css/generic")]
+    private void kH(CCSPlayerController? sender, CommandInfo command)
+    {
+        if (command.ArgCount < 2)
+        {
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Valid usage:");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       on: Enables keeping previous health after start of round.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       off: Disables keeping previous health after start of round.");
+        }
+
+        string arg = command.ArgString.Trim().ToLower();
+
+        var players = Utilities.GetPlayers()
+            .Where(p => p.IsValid && p.Connected == PlayerConnectedState.PlayerConnected);
+
+        if (arg == "on")
+        {
+            keepHealth = 1;
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Keeping health is now {ChatColors.Green}enabled.");
+        }
+
+        if (arg == "off")
+        {
+            keepHealth = 0;
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Keeping health is now {ChatColors.Red}disabled.");
+        }
+    }
+
+    [RequiresPermissions("@css/generic")]
+    private void help(CCSPlayerController? sender, CommandInfo command)
+    {
+        if (command.ArgCount < 2)
+        {
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} !ls (lifesteal) use cases:");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !ls list: List all players that have LifeSteal enabled.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !ls *: Enables/Disables LifeSteal for Everyone");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !ls @ct: Enables/Disables LifeSteal for Counter-Terrorists");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !ls @t: Enables/Disables LifeSteal for Terrorists");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !ls <player-name>: Enables/Disables LifeSteal for provided player.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} !mh (max health_ use cases:");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !mh value: Lists the current max health.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !mh infinite: Sets max health to infinity.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !mh <number>: Sets max health to given number.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} !hp (health drain) use cases:");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !hp value: Lists the current health drain per second.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !hp disable: Disables health drain");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !hp default: Sets health drain per second to default (1).");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !hp <number>: Sets health drain per second to given number.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} !kh (keep health) use cases:");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !kh on: Enables keeping previous health after start of round.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !kh off: Disables keeping previous health after start of round.");
+
+
+        }
+    }
+
     private void hurtPlayer()
     {
         foreach (var player in Utilities.GetPlayers())
@@ -429,7 +557,10 @@ public class LifeSteal : BasePlugin
                 {
                     if (!TargetedPlayers.Contains(player.SteamID))
                         continue;
-                    player.Pawn.Value!.Health -= hDrain;
+                    if (hDrain > 0)
+                    {
+                        player.Pawn.Value!.Health -= hDrain;
+                    }
                     if (player.Pawn.Value!.Health <= 0)
                     {
                         player.CommitSuicide(true, true);

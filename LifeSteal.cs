@@ -303,6 +303,7 @@ public class LifeSteal : BasePlugin
         var players = Utilities.GetPlayers()
             .Where(p => p.IsValid && p.Connected == PlayerConnectedState.PlayerConnected);
         foreach (var player in players)
+            
             if (keepHealth == 1) {
                 if (finishHealth.TryGetValue(player, out int savedHealth))
                 {
@@ -320,14 +321,9 @@ public class LifeSteal : BasePlugin
 
         return HookResult.Continue;
     }
-
-    private float roundRestartDelay =>
-    float.TryParse(ConVar.Find("mp_round_restart_delay")?.StringValue, out var value) ? value : 7.0f;
-
-
     public HookResult roundEnd(EventRoundEnd @event, GameEventInfo info)
     {
-        AddTimer(roundRestartDelay - 0.1f, () =>
+        AddTimer(1f, () =>
         {
             var players = Utilities.GetPlayers()
                 .Where(p => p.IsValid && p.Connected == PlayerConnectedState.PlayerConnected);
@@ -335,6 +331,7 @@ public class LifeSteal : BasePlugin
             foreach (var player in players)
             {
                 finishHealth[player] = player.Pawn?.Value?.Health ?? 0;
+                
             }
         });
 

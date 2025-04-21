@@ -12,6 +12,7 @@ using System.Text.Json.Serialization;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using CounterStrikeSharp.API.Modules.Cvars;
 
 namespace LifeSteal;
 
@@ -59,12 +60,15 @@ public class LifeSteal : BasePlugin
         AddCommand("ls", "LifeSteal command", healthDrain);
         AddCommand("mh", "Changes max health", maxH);
         AddCommand("hp", "Changes health drain", hP);
-        AddCommand("lshelp", "Tells all commands about the plugin.", hP);
-        AddCommand("kh", "Enables/Disables keeping health on round end.", hP);
+        AddCommand("lshelp", "Tells all commands about the plugin.", help);
+        AddCommand("kh", "Enables/Disables keeping health on round end.", kH);
         RegisterEventHandler<EventPlayerHurt>(playerHurt);
         RegisterEventHandler<EventRoundStart>(roundStart);
         RegisterEventHandler<EventRoundEnd>(roundEnd);
+        RegisterEventHandler<EventServerPreShutdown>(preShutDown);
+        RegisterEventHandler<EventServerShutdown>(ShutDown);
         RegisterListener<Listeners.OnTick>(OnTick);
+
     }
 
     public override void Unload(bool hotReload)
@@ -72,7 +76,29 @@ public class LifeSteal : BasePlugin
         SaveConfig();
         SaveDrainConfig();
         saveKeepHealth();
+        SaveMessages();
     }
+
+    public HookResult preShutDown(EventServerPreShutdown @event, GameEventInfo info)
+    {
+        SaveConfig();
+        SaveDrainConfig();
+        saveKeepHealth();
+        SaveMessages();
+
+        return HookResult.Continue;
+    }
+
+    public HookResult ShutDown(EventServerShutdown @event, GameEventInfo info)
+    {
+        SaveConfig();
+        SaveDrainConfig();
+        saveKeepHealth();
+        SaveMessages();
+
+        return HookResult.Continue;
+    }
+
 
     public static void LoadMessages(string filePath)
     {
@@ -278,22 +304,39 @@ public class LifeSteal : BasePlugin
             .Where(p => p.IsValid && p.Connected == PlayerConnectedState.PlayerConnected);
         foreach (var player in players)
             if (keepHealth == 1) {
-                finishHealth[player] = player.Pawn.Value!.Health;
-                if (finishHealth[player]! > 100)
+                if (finishHealth.TryGetValue(player, out int savedHealth))
                 {
-                    player.Pawn.Value!.Health = finishHealth[player];
+                    int currentHealth = player.Pawn?.Value?.Health ?? 0;
+
+                    finishHealth[player] = currentHealth;
+
+                    if (savedHealth > 100)
+                    {
+                        player.Pawn.Value!.Health = savedHealth;
+                    }
                 }
+
             }
 
         return HookResult.Continue;
     }
 
+    private float roundRestartDelay =>
+    float.TryParse(ConVar.Find("mp_round_restart_delay")?.StringValue, out var value) ? value : 7.0f;
+
+
     public HookResult roundEnd(EventRoundEnd @event, GameEventInfo info)
     {
-        var players = Utilities.GetPlayers()
-            .Where(p => p.IsValid && p.Connected == PlayerConnectedState.PlayerConnected);
-        foreach (var player in players)
-            finishHealth[player] = player.Pawn.Value!.Health;
+        AddTimer(roundRestartDelay - 0.1f, () =>
+        {
+            var players = Utilities.GetPlayers()
+                .Where(p => p.IsValid && p.Connected == PlayerConnectedState.PlayerConnected);
+
+            foreach (var player in players)
+            {
+                finishHealth[player] = player.Pawn?.Value?.Health ?? 0;
+            }
+        });
 
         return HookResult.Continue;
     }
@@ -520,29 +563,19 @@ public class LifeSteal : BasePlugin
     {
         if (command.ArgCount < 2)
         {
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} !ls (lifesteal) use cases:");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !ls list: List all players that have LifeSteal enabled.");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !ls *: Enables/Disables LifeSteal for Everyone");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !ls @ct: Enables/Disables LifeSteal for Counter-Terrorists");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !ls @t: Enables/Disables LifeSteal for Terrorists");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !ls <player-name>: Enables/Disables LifeSteal for provided player.");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} !mh (max health_ use cases:");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !mh value: Lists the current max health.");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !mh infinite: Sets max health to infinity.");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !mh <number>: Sets max health to given number.");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} !hp (health drain) use cases:");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !hp value: Lists the current health drain per second.");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !hp disable: Disables health drain");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !hp default: Sets health drain per second to default (1).");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !hp <number>: Sets health drain per second to given number.");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} !kh (keep health) use cases:");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !kh on: Enables keeping previous health after start of round.");
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       !kh off: Disables keeping previous health after start of round.");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Available Commands:");
 
+            sender?.PrintToChat($" {ChatColors.Red}[!ls]{ChatColors.White} list / * / @ct / @t / <name>");
+            sender?.PrintToChat($" {ChatColors.Grey}    Toggle LifeSteal for players or teams.");
 
+            sender?.PrintToChat($" {ChatColors.Red}[!mh]{ChatColors.White} value / infinite / <number>");
+            sender?.PrintToChat($" {ChatColors.Grey}    Set or view max health.");
+
+            sender?.PrintToChat($" {ChatColors.Red}[!hp]{ChatColors.White} value / disable / default / <number>");
+            sender?.PrintToChat($" {ChatColors.Grey}    Set or view health drain per second.");
+
+            sender?.PrintToChat($" {ChatColors.Red}[!kh]{ChatColors.White} on / off");
+            sender?.PrintToChat($" {ChatColors.Grey}    Toggle keeping health between rounds.");
         }
     }
 

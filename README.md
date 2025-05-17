@@ -42,7 +42,7 @@ A CS2 plugin that adds new gameplay mechanics — the main one being **stealing 
 | `!kh on / off` | Toggle keeping health between rounds |
 | `!lm value / default / float` | Set or view LifeSteal health multiplier |
 | `!hud attacker / victim / '*'` | Toggle damage HUD for attacker/victim |
-| `!ls help` | List all commands |
+| `!lshelp` | List all commands |
 
 ---
 

@@ -596,10 +596,10 @@ public class LifeSteal : BasePlugin
             sender?.PrintToChat($" {ChatColors.Grey}    Toggle keeping health between rounds.");
 
             sender?.PrintToChat($" {ChatColors.Red}[!lm]{ChatColors.White} value / default / float");
-            sender?.PrintToChat($" {ChatColors.Grey}    Set or view LifeSteal Health multiplier");
+            sender?.PrintToChat($" {ChatColors.Grey}    Set or view LifeSteal Health multiplier.");
 
             sender?.PrintToChat($" {ChatColors.Red}[!hud]{ChatColors.White} attacker / victim / *");
-            sender?.PrintToChat($" {ChatColors.Grey}    Toggle damage HUD for attacker/victim");
+            sender?.PrintToChat($" {ChatColors.Grey}    Toggle damage HUD for attacker/victim.");
         }
     }
 

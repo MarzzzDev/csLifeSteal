@@ -1,17 +1,17 @@
-# 💉 LifeSteal Plugin for CS2 (CounterStrikeSharp)
+#  LifeSteal Plugin for CS2 (CounterStrikeSharp)
 
-A CS2 plugin that adds new gameplay mechanics — the main one being **stealing health from enemies by damaging them**. By default, players **lose health every second**, creating a high-pressure and strategic experience.
-
----
-
-## 👤 Created by Marzzz
-
-- 🔗 [GitHub](https://github.com/MarzzzDev)
-- 💬 Discord: `mmmarzzz_`
+A CS2 plugin that adds new gameplay mechanics the main one being **stealing health from enemies by damaging them**. By default, players **lose health every second**, creating a high-pressure experience.
 
 ---
 
-## 📦 Installation
+## Created by Marzzz
+
+ [GitHub](https://github.com/MarzzzDev)
+ Discord: `mmmarzzz_`
+
+---
+
+## Installation
 
 > **Tested Platforms:** Linux, Windows  
 > **Requires:** MetaMod and CounterStrikeSharp
@@ -19,14 +19,14 @@ A CS2 plugin that adds new gameplay mechanics — the main one being **stealing 
 1. Download the latest **Release**.
 2. Extract the contents.
 3. Drop the folder into your server's `cs2/addons/counterstrikesharp/plugins/` directory.
-4. Restart your server — you're set!
+4. Restart your server and you're set!
 
 ---
 
-## ✅ Permissions & Credit
+## Permissions & Credit
 
-- ✅ You **may** build on this, report bugs, and use it on any server.
-- 💬 Please consider **crediting me** (Marzzz) if you're building on or redistributing the plugin.
+- You **may** build on this, report bugs, and use it on any server.
+- Please consider **crediting me** (Marzzz) if you're building on or redistributing the plugin.
 
 ---
 
@@ -43,16 +43,6 @@ A CS2 plugin that adds new gameplay mechanics — the main one being **stealing 
 | `!lm value / default / float` | Set or view LifeSteal health multiplier |
 | `!hud attacker / victim / '*'` | Toggle damage HUD for attacker/victim |
 | `!lshelp` | List all commands |
-
----
-
-## 💡 Example Use Cases
-
-- **Survival Mode**: slow HP drain, higher reward on damage
-- **Team Mode**: enable LifeSteal for only one team (e.g., T side)
-- **Vampire Mode**: no drain, just LifeSteal-only playstyle
-
----
 
 ## 📄 License
 

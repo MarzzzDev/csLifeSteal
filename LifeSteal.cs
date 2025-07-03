@@ -175,22 +175,27 @@ public class LifeSteal : BasePlugin
     {
         if (@event.Attacker is CCSPlayerController playerController && @event.Userid is CCSPlayerController hurtPlayer)
         {
-            if (@event.Userid.TeamNum != @event.Attacker.TeamNum)
-            {
-                if (TargetedPlayers.Contains(playerController.SteamID))
+            if (@event.Attacker != null) {
+                if (@event.Userid.TeamNum != @event.Attacker.TeamNum)
                 {
-                    var currentHealth = playerController.Pawn.Value!.Health;
-                    var damageAmount = (int)(@event.DmgHealth * lifeMultiplier);
-
-                    Server.NextFrame(() =>
+                    if (TargetedPlayers.Contains(playerController.SteamID))
                     {
-                        if (!playerController.IsValid || playerController.Pawn.Value == null)
-                            return;
+                        var damageAmount = @event.DmgHealth;
+
+                        var nextPawn = playerController.Pawn?.Value;
+                        if (nextPawn == null)
+                        {
+                            @event.Attacker.PrintToCenter("now, we wag");
+                        }
+                        var currentHealth = nextPawn.Health;
+
 
                         int newHealth = currentHealth + damageAmount;
+                        nextPawn.Health = newHealth;
+
                         if (newHealth <= mHealth)
                         {
-                            playerController.Pawn.Value.Health = newHealth;
+                            nextPawn.Health = newHealth;
 
                             string msg_a = string.Format(Messages["LifeStealGained"], $"+{damageAmount}", "Gained");
                             string msg_v = string.Format(Messages["LifeStealGained"], $"-{@event.DmgHealth}", "Lost");
@@ -205,7 +210,7 @@ public class LifeSteal : BasePlugin
                         }
                         else
                         {
-                            playerController.Pawn.Value.Health = mHealth;
+                            nextPawn.Health = mHealth;
 
                             string msg = Messages["LifeStealMax"];
                             if (hudToggle_A == 1)
@@ -214,9 +219,18 @@ public class LifeSteal : BasePlugin
                             }
                         }
 
-                        Utilities.SetStateChanged(playerController.Pawn.Value, "CBaseEntity", "m_iHealth");
-                    });
+                        Server.NextFrame(() =>
+                        {
+
+                           
+
+                            Utilities.SetStateChanged(nextPawn, "CBaseEntity", "m_iHealth");
+
+                        });
+                    }
                 }
+            } else {
+                @event.Attacker.PrintToCenter("now, we wag");
             }
         }
 

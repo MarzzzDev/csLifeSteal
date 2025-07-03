@@ -1,31 +1,24 @@
 ﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Entities;
 using CounterStrikeSharp.API.Modules.Timers;
-using CounterStrikeSharp.API.Core.Attributes;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Utils;
-using CounterStrikeSharp.API.Modules.Events;
 using System.Text.Json;
-using System.Collections.Generic;
-using System.Linq;
-using System.IO;
-using CounterStrikeSharp.API.Modules.Cvars;
 
 namespace LifeSteal;
 
 public class LifeSteal : BasePlugin
 {
     public override string ModuleName => "LifeSteal";
-    public override string ModuleVersion => "0.0.1";
+    public override string ModuleVersion => "0.0.2";
 
     private readonly HashSet<ulong> TargetedPlayers = new();
-    private int mHealth = int.MaxValue;
-    private int hDrain = 1;
+    private int maxHealth = int.MaxValue;
+    private int healthDrain = 1;
     private int keepHealth = 0;
-    private int hudToggle_A = 1;
-    private int hudToggle_P = 0;
+    private int hudToggle_Attacker = 1;
+    private int hudToggle_Victim = 0;
     private float lifeMultiplier = 1f;
     private string _settingsPath => Path.Combine(ModuleDirectory, "lifesteal_settings.json");
     private readonly Dictionary<CCSPlayerController, float> msgTimer = new();
@@ -38,13 +31,13 @@ public class LifeSteal : BasePlugin
         Console.WriteLine("Life Steal engaged!");
         LoadSettings();
         AddTimer(1.0f, () => hurtPlayer(), TimerFlags.REPEAT);
-        AddCommand("ls", "LifeSteal command", healthDrain);
-        AddCommand("mh", "Changes max health", maxH);
-        AddCommand("hp", "Changes health drain", hP);
-        AddCommand("lm", "Changes health multiplier", lM);
-        AddCommand("hud", "toggle hud", tH);
-        AddCommand("lshelp", "Tells all commands about the plugin.", help);
-        AddCommand("kh", "Enables/Disables keeping health on round end.", kH);
+        AddCommand("ls", "LifeSteal command", lifeStealCommand);
+        AddCommand("mh", "Changes max health", maxHealthCommand);
+        AddCommand("hp", "Changes health drain", healthDrainCommand);
+        AddCommand("lm", "Changes health multiplier", lifeMultiplierCommand);
+        AddCommand("hud", "toggle hud", toggleHudCommand);
+        AddCommand("lshelp", "Tells all commands about the plugin.", helpCommand);
+        AddCommand("kh", "Enables/Disables keeping health on round end.", keepHealthCommand);
         RegisterEventHandler<EventPlayerHurt>(playerHurt);
         RegisterEventHandler<EventRoundStart>(roundStart);
         RegisterEventHandler<EventRoundEnd>(roundEnd);
@@ -86,9 +79,9 @@ public class LifeSteal : BasePlugin
             if (loaded != null)
             {
                 if (loaded.TryGetValue("MaxHealth", out var maxHealth))
-                    mHealth = maxHealth.GetInt32();
+                    this.maxHealth = maxHealth.GetInt32();
                 if (loaded.TryGetValue("DrainPerSecond", out var drain))
-                    hDrain = drain.GetInt32();
+                    healthDrain = drain.GetInt32();
                 if (loaded.TryGetValue("KeepHealth", out var keep))
                     keepHealth = keep.GetInt32();
                 if (loaded.TryGetValue("Multiplier", out var multiplier))
@@ -99,10 +92,10 @@ public class LifeSteal : BasePlugin
                     {
                         lifeMultiplier = 1f;
                     }
-                if (loaded.TryGetValue("ToggleHud_A", out var attacker))
-                    hudToggle_A = attacker.GetInt32();
-                if (loaded.TryGetValue("ToggleHud_P", out var player))
-                    hudToggle_P = player.GetInt32();
+                if (loaded.TryGetValue("ToggleHud_Attacker", out var attacker))
+                    hudToggle_Attacker = attacker.GetInt32();
+                if (loaded.TryGetValue("ToggleHud_Victim", out var player))
+                    hudToggle_Victim = player.GetInt32();
                 if (loaded.TryGetValue("Messages", out var msgBlock))
                     Messages = JsonSerializer.Deserialize<Dictionary<string, string>>(msgBlock.GetRawText()) ?? GetDefaultMessages();
             }
@@ -116,12 +109,12 @@ public class LifeSteal : BasePlugin
         {
             var data = new Dictionary<string, object>
             {
-                {"MaxHealth", mHealth},
-                {"DrainPerSecond", hDrain},
+                {"MaxHealth", maxHealth},
+                {"DrainPerSecond", healthDrain},
                 {"KeepHealth", keepHealth},
                 {"Multiplier", lifeMultiplier},
-                {"ToggleHud_A", hudToggle_A},
-                {"ToggleHud_P", hudToggle_P},
+                {"ToggleHud_A", hudToggle_Attacker},
+                {"ToggleHud_P", hudToggle_Victim},
                 {"Messages", Messages}
             };
             string json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
@@ -183,54 +176,47 @@ public class LifeSteal : BasePlugin
                         int damageAmount = (int)Math.Round(@event.DmgHealth * lifeMultiplier);
 
                         var nextPawn = playerController.Pawn?.Value;
-                        if (nextPawn == null)
+                        if (nextPawn != null)
                         {
-                            
-                        }
-                        int currentHealth = nextPawn.Health;
+                            int currentHealth = nextPawn.Health;
 
 
-                        int newHealth = currentHealth + damageAmount;
-                        nextPawn.Health = newHealth;
-
-                        if (newHealth <= mHealth)
-                        {
+                            int newHealth = currentHealth + damageAmount;
                             nextPawn.Health = newHealth;
 
-                            string msg_a = string.Format(Messages["LifeStealGained"], $"+{damageAmount}", "Gained");
-                            string msg_v = string.Format(Messages["LifeStealGained"], $"-{@event.DmgHealth}", "Lost");
-                            if (hudToggle_A == 1)
+                            if (newHealth <= maxHealth)
                             {
-                                StartPlayerMsgTimer(playerController, 1f, msg_a);
+                                nextPawn.Health = newHealth;
+
+                                string msg_a = string.Format(Messages["LifeStealGained"], $"+{damageAmount}", "Gained");
+                                string msg_v = string.Format(Messages["LifeStealGained"], $"-{@event.DmgHealth}", "Lost");
+                                if (hudToggle_Attacker == 1)
+                                {
+                                    StartPlayerMsgTimer(playerController, 1f, msg_a);
+                                }
+                                if (hudToggle_Victim == 1)
+                                {
+                                    StartPlayerMsgTimer(hurtPlayer, 1f, msg_v);
+                                }
                             }
-                            if (hudToggle_P == 1)
+                            else
                             {
-                                StartPlayerMsgTimer(hurtPlayer, 1f, msg_v);
+                                nextPawn.Health = maxHealth;
+
+                                string msg = Messages["LifeStealMax"];
+                                if (hudToggle_Attacker == 1)
+                                {
+                                    StartPlayerMsgTimer(playerController, 1f, msg);
+                                }
                             }
+
+                            Server.NextFrame(() =>
+                            {
+                                Utilities.SetStateChanged(nextPawn, "CBaseEntity", "m_iHealth");
+                            });
                         }
-                        else
-                        {
-                            nextPawn.Health = mHealth;
-
-                            string msg = Messages["LifeStealMax"];
-                            if (hudToggle_A == 1)
-                            {
-                                StartPlayerMsgTimer(playerController, 1f, msg);
-                            }
-                        }
-
-                        Server.NextFrame(() =>
-                        {
-
-                           
-
-                            Utilities.SetStateChanged(nextPawn, "CBaseEntity", "m_iHealth");
-
-                        });
                     }
                 }
-            } else {
-
             }
         }
 
@@ -248,20 +234,23 @@ public class LifeSteal : BasePlugin
             {
                 if (finishHealth.TryGetValue(player, out int savedHealth))
                 {
-                    int currentHealth = player.Pawn?.Value?.Health ?? 0;
-
-                    finishHealth[player] = currentHealth;
-
-                    if (savedHealth > 100)
+                    if (player.Pawn != null)
                     {
-                        player.Pawn.Value!.Health = savedHealth;
+                        int currentHealth = player.Pawn.Value?.Health ?? 0;
+
+                        finishHealth[player] = currentHealth;
+
+                        if (savedHealth > 100)
+                        {
+                            player.Pawn.Value!.Health = savedHealth;
+                        }
                     }
                 }
-
             }
 
         return HookResult.Continue;
     }
+
     public HookResult roundEnd(EventRoundEnd @event, GameEventInfo info)
     {
         AddTimer(1f, () =>
@@ -280,7 +269,7 @@ public class LifeSteal : BasePlugin
     }
 
     [RequiresPermissions("@css/generic")]
-    private void healthDrain(CCSPlayerController? sender, CommandInfo command)
+    private void lifeStealCommand(CCSPlayerController? sender, CommandInfo command)
     {
 
         string arg = command.ArgString.Trim().ToLower();
@@ -369,13 +358,11 @@ public class LifeSteal : BasePlugin
             {
                 sender?.PrintToChat($" {ChatColors.Red}[LifeSteal] No player found with that name.");
             }
-
-
         }
     }
 
     [RequiresPermissions("@css/generic")]
-    private void maxH(CCSPlayerController? sender, CommandInfo command)
+    private void maxHealthCommand(CCSPlayerController? sender, CommandInfo command)
     {
         if (command.ArgCount < 2)
         {
@@ -392,12 +379,12 @@ public class LifeSteal : BasePlugin
 
         if (arg == "value")
         {
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White}      {mHealth}");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White}      {maxHealth}");
         }
 
         if (arg == "infinite")
         {
-            mHealth = int.MaxValue;
+            maxHealth = int.MaxValue;
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} The max health is now {ChatColors.Green}infinite.");
         }
         else
@@ -407,25 +394,21 @@ public class LifeSteal : BasePlugin
                 return;
             }
 
-            mHealth = parsedHealth;
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} The max health is now {ChatColors.Green}{mHealth}.");
+            maxHealth = parsedHealth;
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} The max health is now {ChatColors.Green}{maxHealth}.");
 
             foreach (var player in players)
             {
-                if (player.Pawn.Value!.Health <= mHealth)
+                if (!(player.Pawn.Value!.Health <= maxHealth))
                 {
-
-                }
-                else
-                {
-                    player.Pawn.Value!.Health = mHealth;
+                    player.Pawn.Value!.Health = maxHealth;
                 }
             }
         }
     }
 
     [RequiresPermissions("@css/generic")]
-    private void hP(CCSPlayerController? sender, CommandInfo command)
+    private void healthDrainCommand(CCSPlayerController? sender, CommandInfo command)
     {
         if (command.ArgCount < 2)
         {
@@ -442,17 +425,17 @@ public class LifeSteal : BasePlugin
             .Where(p => p.IsValid && p.Connected == PlayerConnectedState.PlayerConnected);
         if (arg == "disable")
         {
-            hDrain = 0;
+            healthDrain = 0;
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Health drain is now {ChatColors.Red}disabled.");
         }
         if (arg == "value")
         {
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White}       {hDrain}");
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White}       {healthDrain}");
         }
 
         if (arg == "default")
         {
-            hDrain = 1;
+            healthDrain = 1;
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} The health drain per second is now {ChatColors.Green}default.");
         }
         else
@@ -462,14 +445,14 @@ public class LifeSteal : BasePlugin
                 return;
             }
 
-            hDrain = parsedHealth;
-            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} The health drain per second is now {ChatColors.Green}{hDrain}.");
+            healthDrain = parsedHealth;
+            sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} The health drain per second is now {ChatColors.Green}{healthDrain}.");
         }
     }
 
 
     [RequiresPermissions("@css/generic")]
-    private void kH(CCSPlayerController? sender, CommandInfo command)
+    private void keepHealthCommand(CCSPlayerController? sender, CommandInfo command)
     {
         if (command.ArgCount < 2)
         {
@@ -477,7 +460,6 @@ public class LifeSteal : BasePlugin
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       on: Enables keeping previous health after start of round.");
             sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.Grey}       off: Disables keeping previous health after start of round.");
         }
-
         string arg = command.ArgString.Trim().ToLower();
 
         var players = Utilities.GetPlayers()
@@ -497,7 +479,7 @@ public class LifeSteal : BasePlugin
     }
 
     [RequiresPermissions("@css/generic")]
-    private void lM(CCSPlayerController? sender, CommandInfo command)
+    private void lifeMultiplierCommand(CCSPlayerController? sender, CommandInfo command)
     {
         string arg = command.ArgString.Trim().ToLower();
 
@@ -533,7 +515,7 @@ public class LifeSteal : BasePlugin
     }
 
     [RequiresPermissions("@css/generic")]
-    private void tH(CCSPlayerController? sender, CommandInfo command)
+    private void toggleHudCommand(CCSPlayerController? sender, CommandInfo command)
     {
 
         string arg = command.ArgString.Trim().ToLower();
@@ -549,41 +531,41 @@ public class LifeSteal : BasePlugin
         }
         else if (arg == "attacker")
         {
-            if (hudToggle_A != 1)
+            if (hudToggle_Attacker != 1)
             {
-                hudToggle_A = 1;
+                hudToggle_Attacker = 1;
                 sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Attackers now have HUD {ChatColors.Green}enabled");
-            } else if (hudToggle_A == 1)
+            } else if (hudToggle_Attacker == 1)
             {
-                hudToggle_A = 0;
+                hudToggle_Attacker = 0;
                 sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Attackers now have HUD {ChatColors.Red}disabled");
             }
         }
         else if (arg == "player")
         {
-            if (hudToggle_P != 1)
+            if (hudToggle_Victim != 1)
             {
-                hudToggle_P = 1;
+                hudToggle_Victim = 1;
                 sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Victims now have HUD {ChatColors.Green}enabled");
             }
-            else if (hudToggle_P == 1)
+            else if (hudToggle_Victim == 1)
             {
-                hudToggle_P = 0;
+                hudToggle_Victim = 0;
                 sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Victims now have HUD {ChatColors.Red}disabled");
             }
         }
         else if (arg == "*")
         {
-            if (hudToggle_A != 1 && hudToggle_P != 1)
+            if (hudToggle_Attacker != 1 && hudToggle_Victim != 1)
             {
-                hudToggle_P = 1;
-                hudToggle_A = 1;
+                hudToggle_Victim = 1;
+                hudToggle_Attacker = 1;
                 sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Everyone now has HUD {ChatColors.Green}enabled");
             }
-            else if (hudToggle_A == 1 && hudToggle_P == 1)
+            else if (hudToggle_Attacker == 1 && hudToggle_Victim == 1)
             {
-                hudToggle_P = 0;
-                hudToggle_A = 0;
+                hudToggle_Victim = 0;
+                hudToggle_Attacker = 0;
                 sender?.PrintToChat($" {ChatColors.Red}[LifeSteal]{ChatColors.White} Everyone now has HUD {ChatColors.Red}disabled");
             }
         }
@@ -591,7 +573,7 @@ public class LifeSteal : BasePlugin
 
 
     [RequiresPermissions("@css/generic")]
-    private void help(CCSPlayerController? sender, CommandInfo command)
+    private void helpCommand(CCSPlayerController? sender, CommandInfo command)
     {
         if (command.ArgCount < 2)
         {
@@ -628,9 +610,9 @@ public class LifeSteal : BasePlugin
                 {
                     if (!TargetedPlayers.Contains(player.SteamID))
                         continue;
-                    if (hDrain > 0)
+                    if (healthDrain > 0)
                     {
-                        player.Pawn.Value!.Health -= hDrain;
+                        player.Pawn.Value!.Health -= healthDrain;
                     }
                     if (player.Pawn.Value!.Health <= 0)
                     {

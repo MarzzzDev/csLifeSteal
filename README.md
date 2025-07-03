@@ -2,7 +2,9 @@
 LifeSteal is a CS# Plugin with many capabilities - It's a fun minigame that can be used anywhere and customized completely.
 ## 🎮Example use cases:🎮
 💉Deathmatch💉 - Drain damage per second and you have to do damage to live as long as possible.
+
 💉Competitive 5v5💉 - Simple CS2 Competitive but with a twist. No health drain, 50% Health you deal you get
+
 💉AND MORE!💉
 ## 💬Commands:💬
 💉[!ls]💉 list / * / @ct / @t / <name>

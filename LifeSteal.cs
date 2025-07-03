@@ -180,14 +180,14 @@ public class LifeSteal : BasePlugin
                 {
                     if (TargetedPlayers.Contains(playerController.SteamID))
                     {
-                        var damageAmount = @event.DmgHealth;
+                        int damageAmount = (int)Math.Round(@event.DmgHealth * lifeMultiplier);
 
                         var nextPawn = playerController.Pawn?.Value;
                         if (nextPawn == null)
                         {
-                            @event.Attacker.PrintToCenter("now, we wag");
+                            
                         }
-                        var currentHealth = nextPawn.Health;
+                        int currentHealth = nextPawn.Health;
 
 
                         int newHealth = currentHealth + damageAmount;
@@ -230,7 +230,7 @@ public class LifeSteal : BasePlugin
                     }
                 }
             } else {
-                @event.Attacker.PrintToCenter("now, we wag");
+
             }
         }
 

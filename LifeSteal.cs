@@ -242,7 +242,10 @@ public class LifeSteal : BasePlugin
 
                         if (savedHealth > 100)
                         {
-                            player.Pawn.Value!.Health = savedHealth;
+                            if (player.Pawn.Value != null)
+                            {
+                                player.Pawn.Value.Health = savedHealth;
+                            }
                         }
                     }
                 }
@@ -399,9 +402,12 @@ public class LifeSteal : BasePlugin
 
             foreach (var player in players)
             {
-                if (!(player.Pawn.Value!.Health <= maxHealth))
+                if (player.Pawn.Value != null)
                 {
-                    player.Pawn.Value!.Health = maxHealth;
+                    if (!(player.Pawn.Value.Health <= maxHealth))
+                    {
+                        player.Pawn.Value.Health = maxHealth;
+                    }
                 }
             }
         }
@@ -610,15 +616,18 @@ public class LifeSteal : BasePlugin
                 {
                     if (!TargetedPlayers.Contains(player.SteamID))
                         continue;
-                    if (healthDrain > 0)
+                    if (player.Pawn.Value != null && player.PlayerPawn.Value != null)
                     {
-                        player.Pawn.Value!.Health -= healthDrain;
+                        if (healthDrain > 0)
+                        {
+                            player.Pawn.Value.Health -= healthDrain;
+                        }
+                        if (player.Pawn.Value.Health <= 0)
+                        {
+                            player.CommitSuicide(true, true);
+                        }
+                        Server.NextFrame(() => Utilities.SetStateChanged(player.PlayerPawn.Value, "CBaseEntity", "m_iHealth"));
                     }
-                    if (player.Pawn.Value!.Health <= 0)
-                    {
-                        player.CommitSuicide(true, true);
-                    }
-                    Server.NextFrame(() => Utilities.SetStateChanged(player.PlayerPawn.Value!, "CBaseEntity", "m_iHealth"));
                 }
             }
         }

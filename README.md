@@ -6,16 +6,27 @@ LifeSteal is a CS# Plugin with many capabilities - It's a fun minigame that can 
 💉AND MORE!💉
 ## 💬Commands:💬
 💉[!ls]💉 list / * / @ct / @t / <name>
+
 Toggle LifeSteal for players or teams.
+
 💉[!mh]💉 value / infinite / <number>
+
 Set or view max health.
+
 💉[!hp]💉 value / disable / default / <number>
+
 Set or view health drain per second.
+
 💉[!kh]💉 on / off
+
 Toggle keeping health between rounds.
+
 💉[!lm]💉 value / default / float
+
 Set or view LifeSteal Health multiplier.
+
 💉[!hud]💉 attacker / victim / *
+
 Toggle damage HUD for attacker/victim.
 
 ## 💉Health Drain💉

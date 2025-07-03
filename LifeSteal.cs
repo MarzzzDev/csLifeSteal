@@ -17,7 +17,7 @@ public class LifeSteal : BasePlugin
     private int maxHealth = int.MaxValue;
     private int healthDrain = 1;
     private int keepHealth = 0;
-    private int hudToggle_Attacker = 1;
+    private int hudToggle_Attacker = 0;
     private int hudToggle_Victim = 0;
     private float lifeMultiplier = 1f;
     private string _settingsPath => Path.Combine(ModuleDirectory, "lifesteal_settings.json");
